@@ -1,5 +1,22 @@
 # User added
 *oracle*
+
+# MassSpecGym (msg) — large artefacts stay local; only README.md + .gitkeep are tracked
+data/spec_datasets/msg/*.hdf5
+data/spec_datasets/msg/*.tsv
+data/spec_datasets/msg/*.zip
+data/spec_datasets/msg/splits/
+data/spec_datasets/msg/subformulae/
+
+# Smoke dataset (local / generated; large or machine-specific)
+data/spec_datasets/smoke/
+
+# Pretrained weights and checkpoints bundles (download separately)
+pretrained_weights/
+
+# Root-level zip archives (e.g. weight dumps); subdirs unaffected
+/*.zip
+
 /data/retrieval
 scratch
 default.profraw

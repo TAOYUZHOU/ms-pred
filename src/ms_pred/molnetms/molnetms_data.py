@@ -234,7 +234,10 @@ class BinnedDataset(Dataset):
         self.df = self.df[mask]
         self.spec_names = np.array(self.spec_names)[mask].tolist()
         self.weights = np.array(self.weights)[mask].tolist()
-        self.mol_graphs = np.array(self.mol_graphs, dtype=object)[mask].tolist()
+        _mg_arr = np.empty(len(self.mol_graphs), dtype=object)
+        for _i, _g in enumerate(self.mol_graphs):
+            _mg_arr[_i] = _g
+        self.mol_graphs = _mg_arr[mask].tolist()
 
         self.adducts = [
             common.ion2onehot_pos[self.name_to_adduct[i]] for i in self.spec_names

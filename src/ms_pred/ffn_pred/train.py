@@ -30,6 +30,7 @@ def add_ffn_train_args(parser):
     parser.add_argument("--batch-size", default=128, action="store", type=int)
     parser.add_argument("--max-epochs", default=100, action="store", type=int)
     parser.add_argument("--min-epochs", default=0, action="store", type=int)
+    parser.add_argument("--patience", default=10, action="store", type=int)
 
     date = datetime.now().strftime("%Y_%m_%d")
     parser.add_argument("--save-dir", default=f"results/{date}_ffn/")
@@ -188,7 +189,7 @@ def train_model():
         filename="best",  # "{epoch}-{val_loss:.2f}",
         save_weights_only=False,
     )
-    earlystop_callback = EarlyStopping(monitor=monitor, patience=10)
+    earlystop_callback = EarlyStopping(monitor=monitor, patience=kwargs["patience"])
     callbacks = [earlystop_callback, checkpoint_callback]
 
     trainer = pl.Trainer(

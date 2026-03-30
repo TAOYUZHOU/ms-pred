@@ -1,6 +1,8 @@
 import logging
 import json
 import numpy as np
+import re
+import h5py
 
 import torch
 from rdkit import Chem
@@ -9,6 +11,17 @@ import dgl
 
 import ms_pred.common as common
 from ._massformer_graph_featurizer import MassformerGraphFeaturizer
+
+
+def _build_h5_key_map(h5_path):
+    """Build spec_name -> {ce_from_labels: actual_h5_key} mapping."""
+    key_by_spec = {}
+    with h5py.File(h5_path, "r") as f:
+        for k in f.keys():
+            m = re.match(r"(.+)_collision (.+)\.json", k)
+            if m:
+                key_by_spec.setdefault(m.group(1), []).append(k)
+    return key_by_spec
 
 
 class BinnedDataset(Dataset):
@@ -34,8 +47,12 @@ class BinnedDataset(Dataset):
         self.subform_path = data_dir / "subformulae" / f"{form_dir_name}"
         self.subform_h5 = None
 
+        self._h5_key_by_spec = _build_h5_key_map(self.subform_path)
+
         # Read in all molecules & specs
         self.graph_featurizer = MassformerGraphFeaturizer()
+
+        h5_key_by_spec = self._h5_key_by_spec
 
         def process_df(df_row):
             smi, spec_name, ces = df_row["smiles"], df_row['spec'], df_row['collision_energies']
@@ -43,11 +60,17 @@ class BinnedDataset(Dataset):
             mw = common.ExactMolWt(mol)
             graph = self.graph_featurizer(mol)
 
-            # load spectrum
             all_spec_output = []
             for ce in eval(ces):
-                ce = int(ce)  # collision energies are integers in NIST
-                all_spec_output.append((spec_name, smi, mol, mw, graph, ce))
+                ce = float(ce)
+                if ce == int(ce):
+                    ce = int(ce)
+                key = f"{spec_name}_collision {ce}.json"
+                if key not in (h5_key_by_spec.get(spec_name) or []):
+                    candidates = h5_key_by_spec.get(spec_name, [])
+                    if candidates:
+                        key = candidates[0]
+                all_spec_output.append((spec_name, smi, mol, mw, graph, ce, key))
             return all_spec_output
 
         dfrows = [i for _, i in self.df.iterrows()]
@@ -62,7 +85,7 @@ class BinnedDataset(Dataset):
             )
         outputs = [j for i in outputs for j in i]  # unroll
 
-        self.spec_names, self.smiles, self.mols, self.weights, self.mol_graphs, self.collision_energies = zip(*outputs)
+        self.spec_names, self.smiles, self.mols, self.weights, self.mol_graphs, self.collision_energies, self.h5_keys = zip(*outputs)
 
         # collision energy statistics
         self.collision_energy_mean = common.NIST_COLLISION_ENERGY_MEAN
@@ -82,10 +105,11 @@ class BinnedDataset(Dataset):
         graph = self.mol_graphs[idx]
         full_weight = self.weights[idx]
         adduct = self.adducts[idx]
+        h5_key = self.h5_keys[idx]
 
         if self.subform_h5 is None:
             self.subform_h5 = common.HDF5Dataset(self.subform_path)
-        json_str = self.subform_h5.read_str(f'{name}_collision {collision_energy}.json')
+        json_str = self.subform_h5.read_str(h5_key)
         meta, spec_ar = common.bin_from_str(json_str, num_bins=self.num_bins, upper_limit=self.upper_limit)
 
         norm_collision_energy = (collision_energy - self.collision_energy_mean) / (self.collision_energy_std + 1e-6)  # it's not "NCE" on Thermo instruments!!
@@ -163,7 +187,9 @@ class MolDataset(Dataset):
             # load spectrum
             all_spec_output = []
             for ce in eval(ces):
-                ce = int(ce)  # collision energies are integers in NIST
+                ce = float(ce)
+                if ce == int(ce):
+                    ce = int(ce)
                 all_spec_output.append((spec_name, smi, mol, mw, graph, ce))
             return all_spec_output
 

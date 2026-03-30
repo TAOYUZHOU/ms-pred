@@ -1,0 +1,46 @@
+launcher_args: {experiment_name: graff_ms_baseline_msg,
+  script_name: "src/ms_pred/graff_ms/train.py",
+  slurm_script: launcher_scripts/generic_slurm.sh, 
+  launch_method: local,
+  visible_devices: [0]
+}
+universal_args:
+  _slurm_args:
+  - {_num_gpu: 1, cpus-per-task: 7, job-name: forward_train, mem-per-cpu: 8G,
+    time: '1-18:00:00'}
+  debug: [false]
+  gpu: [true]
+
+  seed: [1]
+  num-workers: [8]
+  batch-size: [64]
+  max-epochs: [100]
+  patience: [30]
+
+  dataset-name: [msg]
+  split-name: [split.tsv]
+
+  learning-rate: [0.00018]
+  lr-decay-rate: [0.92]
+  num-bins: [15000]
+  loss-fn: [cosine]
+
+  dropout: [0.3]
+  hidden-size: [512]
+  layers: [6]
+  weight-decay: [1e-6]
+  pe-embed-k: [11]
+  pool-op: [avg]
+  set-layers: [0]
+  use-reverse: [false]
+
+  form-dir-name: ['no_subform.hdf5']
+  embed-adduct: [true]
+  embed-collision-energy: [true]
+  mpnn-type: [GGNN]
+  num-fixed-forms: [5000]
+
+iterative_args:
+  -  split-name: [split.tsv]
+     save-dir: [split_rnd1]
+     seed: [1]

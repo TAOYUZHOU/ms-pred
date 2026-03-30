@@ -92,8 +92,16 @@ def process_form_str(form_dict_str, upper_limit, num_bins):
     intens = out_tbl.get("ms2_inten", [])
     formulae = out_tbl.get("formula", [])
 
-    # Get raw spec
-    raw_spec = np.array(out_tbl.get("raw_spec"))
+    # Get raw spec (fallback: reconstruct from mz + ms2_inten)
+    raw_spec = out_tbl.get("raw_spec")
+    if raw_spec is None:
+        mzs = out_tbl.get("mz", [])
+        intens_raw = out_tbl.get("ms2_inten", [])
+        if len(mzs) == 0:
+            return None
+        raw_spec = np.array(list(zip(mzs, intens_raw)), dtype=float)
+    else:
+        raw_spec = np.array(raw_spec)
 
     bins = np.linspace(0, upper_limit, num_bins)
     bin_posts = np.clip(np.digitize(raw_spec[:, 0], bins), 0, num_bins-1)
@@ -235,7 +243,7 @@ class BinnedDataset(Dataset):
         ar = spec_form_obj["raw_binned"]
         adduct = self.adducts[idx]
         precursor = common.mass_from_smi(smiles) + common.ion2mass[adduct]
-        nce = int(common.ev_to_nce(int(collision_energy), precursor))
+        nce = int(common.ev_to_nce(int(float(collision_energy)), precursor))
 
         outdict = {
             "name": name,
@@ -335,7 +343,7 @@ class MolDataset(Dataset):
         adduct = self.adducts[idx]
         collision_energy = self.collision_energies[idx]
         precursor = common.mass_from_smi(smi) + common.ion2mass[adduct]
-        nce = int(common.ev_to_nce(int(collision_energy), precursor))
+        nce = int(common.ev_to_nce(int(float(collision_energy)), precursor))
         outdict = {
             "smi": smi,
             "graph": graph,

@@ -539,7 +539,8 @@ class FragGNN(pl.LightningModule):
         root_repr = None
         if self.root_encode == "gnn":
             root_repr = dgl.batch([rg["graph"] for rg in root_graph_dict]).to(device)
-            self.tree_processor.add_pe_embed(root_repr)  # add random walk feature
+            if self.pe_embed_k > 0:
+                self.tree_processor.add_pe_embed(root_repr)
         elif self.root_encode == "fp":
             root_fp = torch.from_numpy(np.array([common.get_morgan_fp_smi(rsmi) for rsmi in root_smi]))
             root_repr = root_fp.float().to(device)
@@ -627,7 +628,8 @@ class FragGNN(pl.LightningModule):
                 # for _frag_batch, _new_frag_hashes, _rev_idx, _frag_form_vecs in \
                 #         split_batch(frag_batch, new_frag_hashes, reverse_idx, frag_form_vecs):
                 frag_batch = frag_batch.to(device)
-                self.tree_processor.add_pe_embed(frag_batch)  # add random walk feature. GPU memory intensive!
+                if self.pe_embed_k > 0:
+                    self.tree_processor.add_pe_embed(frag_batch)
                 inds = torch.tensor(reverse_idx).long().to(device)
 
                 broken_nums_ar = np.array(
